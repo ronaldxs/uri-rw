@@ -6,6 +6,8 @@ use URI::Escape;
 need URI::DefaultPort;
 
 has $.grammar;
+has $.parse-result;
+has Bool $!need-reparse;
 has $.is_validating is rw = False;
 has $!path;
 has $!is_absolute;  # part of deprecated code scheduled for removal
@@ -14,6 +16,7 @@ has $!authority;
 has $!query;
 has $!frag;
 has %!query_form;
+has $.port;
 has $!uri;  # use of this now deprecated
 
 has @.segments;
@@ -46,6 +49,7 @@ method parse (Str $str) {
 
     # now deprecated
     $!uri = $!grammar.parse_result;
+    $!parse-result = $!grammar.parse_result;
 
     my $comp_container = $!grammar.parse_result<URI_reference><URI> ||
         $!grammar.parse_result<URI_reference><relative_ref>;
@@ -134,16 +138,68 @@ method new(Str $uri_pos1?, Str :$uri, :$is_validating) {
     return $obj;
 }
 
-method scheme {
-    return ~$!scheme.lc;
+method scheme is rw {
+    Proxy.new(
+        FETCH => -> $self { ~$!scheme.lc },
+        STORE => -> $self, Str $new-scheme {
+            my $scheme-parse-rc = IETF::RFC_Grammar::URI.parse(
+                $new-scheme, :rule<scheme>
+            ) or die "not a valid URI scheme";
+            $!scheme = $scheme-parse-rc;
+            $!need-reparse = True;
+        }
+    );
 }
 
-method authority {
-    return ~$!authority.lc;
+method authority is rw {
+    Proxy.new(
+        FETCH => -> $self { ~$!authority.lc },
+        STORE => -> $self,
+                    Str $new-authority {
+            my $auth-parse-rc = IETF::RFC_Grammar::URI.parse(
+                $new-authority, :rule<authority>
+            );
+            if ($auth-parse-rc) {
+                $!authority = $auth-parse-rc;
+                $!need-reparse = True;
+            }
+            else {
+                die "not a valid URI authority"
+            }
+        }
+    );
 }
 
-method host {
-    return ($!authority<host> || '').lc;
+sub rebuild-authority-str(Str $userinfo, Str $host, Str $port) {
+    my Str $rc = $host;
+    $rc = $userinfo ~ '@' ~ $rc if $userinfo;
+    $rc ~= ':' ~ $port if ($port);
+    $rc;
+}
+
+method host is rw {
+    Proxy.new(
+        FETCH => -> $self { ($!authority<host> || '').lc },
+        STORE => -> $self,
+                    Str $new-host where
+                            /^<IETF::RFC_Grammar::URI::host>$/ {
+            my $auth-parse-rc = IETF::RFC_Grammar::URI.parse(
+                rebuild-authority-str(
+                    ~($!authority<userinfo> // ''),
+                    $new-host, ~($!authority<port> // '')
+                ),
+                :rule<authority>
+            );
+            if ($auth-parse-rc) {
+                $!authority = $auth-parse-rc;
+                $!need-reparse = True;
+            }
+            else {
+                die "host not valid for URI authority";
+            }
+            $!need-reparse = True;
+        }
+    );
 }
 
 method default_port {
@@ -156,8 +212,30 @@ method _port {
     $!authority<port> ?? ($!authority<port> ~ '').Int !! Int;
 }
 
-method port {
-    $._port // $.default_port;
+method port is rw {
+    Proxy.new(
+        FETCH => -> $self { $._port // $.default_port; },
+        STORE => -> $self,
+                    Cool $new-port where
+                            /^<IETF::RFC_Grammar::URI::port>$/ {
+            my $auth-parse-rc = IETF::RFC_Grammar::URI.parse(
+                rebuild-authority-str(
+                    ~($!authority<userinfo> // ''),
+                    ~($!authority<host> // ''),
+                    ~$new-port
+                ),
+                :rule<authority>
+            );
+            if ($auth-parse-rc) {
+                $!authority = $auth-parse-rc;
+                $!need-reparse = True;
+            }
+            else {
+                die "port not valid for URI authority";
+            }
+            $!need-reparse = True;
+        }
+    );
 }
 
 method path {
@@ -192,7 +270,15 @@ method path_query {
 
 
 method frag {
-    return ~($!frag || '').lc;
+    Proxy.new(
+        FETCH => -> $self { ~($!frag // '').lc },
+        STORE => -> $self,
+                    Str $new-fragment where
+                            /^<IETF::RFC_Grammar::URI::fragment>$/ {
+            $!need-reparse = True; 
+            $!frag = $new-fragment
+        }
+    );
 }
 
 method fragment { $.frag }
@@ -219,7 +305,7 @@ method chunks {
 }
 
 method uri {
-    warn "uri attribute now deprecated in favor of .grammar.parse_result";
+    warn "uri attribute now deprecated in favor of .parse-result";
     return $!uri;
 }
 
@@ -249,7 +335,7 @@ URI — Uniform Resource Identifiers (absolute and relative)
 
     # something p5 URI without grammar could not easily do !
     my $host_in_grammar =
-        $u.grammar.parse_result<URI_reference><URI><hier_part><authority><host>;
+        $u.parse-result<URI_reference><URI><hier_part><authority><host>;
     if ($host_in_grammar<reg_name>) {
         say 'Host looks like registered domain name - approved!';
     }
