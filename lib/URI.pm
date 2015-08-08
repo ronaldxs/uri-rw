@@ -372,7 +372,7 @@ URI — Uniform Resource Identifier
     my $u_v = URI.new('http://?#?#', :is_validating<1>);# throw exception
 
 
-    #now with Updateable URI components
+    # now with updateable URI components
     my $u = URI.new('http://here.com/foo/bar?tag=woow#bla');
     $u.scheme = 'ftp';
     $u.host = 'there.com';
