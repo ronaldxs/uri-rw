@@ -1,5 +1,7 @@
 ﻿
-### Perl6 realization of URI - Uniform Resource Identifiers handler
+# Perl6 realization of URI handler
+
+URI - Uniform Resource Identifiers
 
 ### A URI implementation using Perl 6 grammars to implement RFC 3986 BNF.
 
