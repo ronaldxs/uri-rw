@@ -1,5 +1,8 @@
 unit class URI;
 
+use URI::Component;
+use URI::InvalidSyntax;
+
 use IETF::RFC_Grammar;
 use IETF::RFC_Grammar::URI;
 use URI::Escape;
@@ -144,7 +147,7 @@ method scheme is rw {
         STORE => -> $self, Str $new-scheme {
             my $scheme-parse-rc = IETF::RFC_Grammar::URI.parse(
                 $new-scheme, :rule<scheme>
-            ) or die "not a valid URI scheme";
+            ) or die URI::InvalidSyntax.new(c => URI::Component::scheme);
             $!scheme = $scheme-parse-rc;
             $!need-reparse = True;
         }
@@ -158,14 +161,9 @@ method authority is rw {
                     Str $new-authority {
             my $auth-parse-rc = IETF::RFC_Grammar::URI.parse(
                 $new-authority, :rule<authority>
-            );
-            if ($auth-parse-rc) {
-                $!authority = $auth-parse-rc;
-                $!need-reparse = True;
-            }
-            else {
-                die "not a valid URI authority"
-            }
+            ) or die URI::InvalidSyntax.new(c => URI::Component::authority);
+            $!authority = $auth-parse-rc;
+            $!need-reparse = True;
         }
     );
 }
@@ -180,9 +178,9 @@ sub rebuild-authority-str(Str $userinfo, Str $host, Str $port) {
 method host is rw {
     Proxy.new(
         FETCH => -> $self { ($!authority<host> || '').lc },
-        STORE => -> $self,
-                    Str $new-host where
-                            /^<IETF::RFC_Grammar::URI::host>$/ {
+        STORE => -> $self, Str $new-host {
+            $new-host ~~ /^<IETF::RFC_Grammar::URI::host>$/ or
+                die URI::InvalidSyntax.new(c => URI::Component::host);
             my $auth-parse-rc = IETF::RFC_Grammar::URI.parse(
                 rebuild-authority-str(
                     ~($!authority<userinfo> // ''),
@@ -215,9 +213,9 @@ method _port {
 method port is rw {
     Proxy.new(
         FETCH => -> $self { $._port // $.default_port; },
-        STORE => -> $self,
-                    Cool $new-port where
-                            /^<IETF::RFC_Grammar::URI::port>$/ {
+        STORE => -> $self, Cool $new-port {
+            $new-port ~~ /^<IETF::RFC_Grammar::URI::port>$/ or
+                die URI::InvalidSyntax.new(c => URI::Component::port);
             my $auth-parse-rc = IETF::RFC_Grammar::URI.parse(
                 rebuild-authority-str(
                     ~($!authority<userinfo> // ''),
@@ -239,7 +237,16 @@ method port is rw {
 }
 
 method path {
-    return ~($!path || '');
+    Proxy.new(
+        FETCH => -> $self { ~($!path || '') },
+        STORE => -> $self, Str $new-path {
+            $new-path ~~ /^<IETF::RFC_Grammar::URI::path_abempty>$/ or
+                die URI::InvalidSyntax.new(c => URI::Component::path);
+            $!path = $new-path;
+            my Str $new-uri-str = $.Str;
+            $.parse($new-uri-str);
+        }
+    );
 }
 
 #`{{
@@ -261,7 +268,16 @@ method relative {
 }
 
 method query {
-    item ~($!query || '');
+    Proxy.new(
+        FETCH => -> $self { ~($!query || '') },
+        STORE => -> $self, Str $new-query {
+            $new-query ~~ /^<IETF::RFC_Grammar::URI::query>$/ or
+                die URI::InvalidSyntax.new(c => URI::Component::query);
+            $!query = $new-query;
+            my Str $new-uri-str = $.Str;
+            $.parse($new-uri-str);
+        }
+    );
 }
 
 method path_query {
@@ -272,9 +288,9 @@ method path_query {
 method frag {
     Proxy.new(
         FETCH => -> $self { ~($!frag // '').lc },
-        STORE => -> $self,
-                    Str $new-fragment where
-                            /^<IETF::RFC_Grammar::URI::fragment>$/ {
+        STORE => -> $self, Str $new-fragment {
+            $new-fragment ~~ /^<IETF::RFC_Grammar::URI::fragment>$/ or
+                die URI::InvalidSyntax.new(c => URI::Component::fragment);
             $!need-reparse = True; 
             $!frag = $new-fragment
         }
@@ -311,6 +327,14 @@ method uri {
 
 method query_form {
     return %!query_form;
+}
+
+method parse-result {
+    if $!need-reparse {
+        $.parse($.Str);
+        $!need-reparse = False;
+    }
+    return $!parse-result;
 }
 
 =begin pod
