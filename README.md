@@ -1,5 +1,5 @@
 ﻿
-## Perl6 realization of URI - Uniform Resource Identifiers handler
+### Perl6 realization of URI - Uniform Resource Identifiers handler
 
 ### A URI implementation using Perl 6 grammars to implement RFC 3986 BNF.
 
@@ -29,6 +29,8 @@ examples:
         say 'Sorry we do not take ip address hosts at this time.';
         say 'Please use registered domain name!';
     }
+
+Modification examples:
 
     # now with updateable URI components
     my $u = URI.new('http://here.com/foo/bar?tag=woow#bla');
