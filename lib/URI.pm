@@ -339,14 +339,14 @@ method parse-result {
 
 =begin pod
 
-=head NAME
+=head1 NAME
 
-URI — Uniform Resource Identifiers (absolute and relative)
+URI — Uniform Resource Identifier
 
-=head SYNOPSIS
+=head1 SYNOPSIS
 
     use URI;
-    my $u = URI.new('http://her.com/foo/bar?tag=woow#bla');
+    my $u = URI.new('http://here.com/foo/bar?tag=woow#bla');
 
     my $scheme = $u.scheme;
     my $authority = $u.authority;
@@ -370,6 +370,16 @@ URI — Uniform Resource Identifiers (absolute and relative)
 
     # require whole string matches URI and throw exception otherwise ..
     my $u_v = URI.new('http://?#?#', :is_validating<1>);# throw exception
+
+
+    #now with Updateable URI components
+    my $u = URI.new('http://here.com/foo/bar?tag=woow#bla');
+    $u.scheme = 'ftp';
+    $u.host = 'there.com';
+    $u.port = 8080;
+    $u.frag = '';
+    # say $u now yields ftp://there.com:8080/foo/bar?tag=woow
+
 =end pod
 
 
