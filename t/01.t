@@ -63,18 +63,18 @@ is("$u", 'http://foo.com', '<> removed from str');
 $u.parse(' "http://foo.com"');
 is("$u", 'http://foo.com', '"" removed from str');
 my $host_in_grammar =
-    $u.grammar.parse_result<URI_reference><URI><hier_part><authority><host>;
+    $u.grammar.parse_result<URI-reference><URI><hier-part><authority><host>;
 ok(! $host_in_grammar<IPv4address>.defined, 'grammar detected host not ip'
 );
-is($host_in_grammar<reg_name>, 'foo.com', 'grammar detected registered domain style');
+is($host_in_grammar<reg-name>, 'foo.com', 'grammar detected registered domain style');
 
 $u.parse('http://10.0.0.1');
 is($u.host, '10.0.0.1', 'numeric host');
 $host_in_grammar =
-    $u.grammar.parse_result<URI_reference><URI><hier_part><authority><host>;
+    $u.grammar.parse_result<URI-reference><URI><hier-part><authority><host>;
 
 is($host_in_grammar<IPv4address>, '10.0.0.1', 'grammar detected ipv4');
-ok(! $host_in_grammar<reg_name>.defined, 'grammar detected no registered domain style');
+ok(! $host_in_grammar<reg-name>.defined, 'grammar detected no registered domain style');
 
 $u.parse('http://example.com:80/about?foo=cod&bell=bob#bar');
 is($u.query, 'foo=cod&bell=bob', 'query with form params');

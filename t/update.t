@@ -30,7 +30,7 @@ ok($!.message ~~ /Invalid.*syntax.*authority/, 'recognized bad authority');
 $u.host = 'perlmonks.org';
 is($u.host, 'perlmonks.org', 'right new host');
 is($u.authority, 'perlmonks.org:8080', 'right new authority set by host');
-my $parse-host = $u.parse-result<URI_reference><URI><hier_part><authority><host>;
+my $parse-host = $u.parse-result<URI-reference><URI><hier-part><authority><host>;
 is($parse-host, 'perlmonks.org', 'test that parse tree updated as needed');
 try {$u.host = '??##'};
 ok($!.message ~~ /Invalid.*syntax.*host/, 'recognized bad host');

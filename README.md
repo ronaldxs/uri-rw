@@ -23,8 +23,8 @@ examples:
 
     # something p5 URI without grammar could not easily do !
     my $host_in_grammar =
-        $u.parse-result<URI_reference><URI><hier_part><authority><host>;
-    if ($host_in_grammar<reg_name>) {
+        $u.parse-result<URI-reference><URI><hier-part><authority><host>;
+    if ($host_in_grammar<reg-name>) {
         say 'Host looks like registered domain name - approved!';
     }
     else {
